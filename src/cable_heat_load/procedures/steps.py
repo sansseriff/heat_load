@@ -20,15 +20,20 @@ from cable_heat_load.config import CalibrationConfig
 
 
 def read_snapshot(instruments, cfg: CalibrationConfig) -> dict:
-    """Read all sources and compute heater power via the 4-wire sense.
+    """Read all sources and compute true heater power from I and the 4-wire V.
 
-    Isolated-plate temp + heater voltages come from the Ethernet CTC; the 40 K
-    sub-plate comes from the RPC source (NaN if disabled/unreachable).
+    The 100 W output (current source) gives the delivered current I; AIO2 gives
+    the true 4-wire heater voltage. So P = V_sense * I and R = V_sense / I, with
+    no assumed resistance and lead dissipation excluded. Isolated-plate temp
+    comes from the Ethernet CTC; the 40 K sub-plate from the RPC source (NaN if
+    disabled/unreachable).
     """
     ctc = instruments.eth
     ch = cfg.channels
     v_sense = ctc.read_channel(ch.vsense)
-    power = v_sense**2 / cfg.r_heater_ohm if cfg.r_heater_ohm else float("nan")
+    current = ctc.read_channel(ch.heater_current_chan or ch.heater)
+    power = v_sense * current
+    r_live = v_sense / current if current else float("nan")
     t_40k = float("nan")
     if instruments.t40k is not None:
         try:
@@ -39,8 +44,9 @@ def read_snapshot(instruments, cfg: CalibrationConfig) -> dict:
         "t_isolated_k": ctc.read_channel(ch.sensor_a),
         "t_40k_k": t_40k,
         "heater_v_sense": v_sense,
-        "heater_v_drive": ctc.read_channel(ch.heater),
+        "heater_current": current,
         "heater_power_w": power,
+        "r_heater_live": r_live,
     }
 
 
@@ -55,9 +61,10 @@ class ConfigureInstrument(Step):
         ctc = self.context.instruments.eth
         cfg, ch = self.cfg, self.cfg.channels
         ctc.set_sensor(ch.sensor_a, cfg.sensor_type)
-        ctc.set_io_type(ch.heater, "Set out")
+        # 100 W outputs (Out1/Out2) are dedicated outputs -- no IOtype to set;
+        # just choose units (Amps) and a safety high-limit.
         ctc.set_units(ch.heater, cfg.heater_units)
-        ctc.set_high_limit(ch.heater, cfg.heater_hilmt_v)
+        ctc.set_high_limit(ch.heater, cfg.heater_hilmt)
         ctc.set_io_type(ch.vsense, "Input")
         ctc.configure_pid(
             ch.heater, ch.sensor_a,

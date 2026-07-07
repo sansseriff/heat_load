@@ -1,14 +1,15 @@
 """Step 4 - measure the heater resistance in situ (4-wire) and check the drive.
 
-Drives the heater with a few small voltages (well under the 30 mA AIO limit) and
-uses the 4-wire sense to get the true heater resistance:
+Drives the 100 W output at a few small currents and reads the true 4-wire
+voltage on AIO2, so:
 
-    R_heater = R_leads * V_sense / (V_drive - V_sense)
+    R_heater = V_sense / I          (exact -- current source + 4-wire voltage)
+    P_heater = V_sense * I
 
-where R_leads is the drive-loop lead resistance (config.r_leads_drive_ohm, from
-the DMM loop measurement). This both confirms the heater responds and refines
-the R_heater used for power = V_sense**2 / R_heater. Update
-`r_heater_ohm` in config.py with the result.
+This confirms the heater responds and gives R_heater at the current plate
+temperature. Repeat at a few plate temperatures (via PID, or as the fridge
+drifts) to see whether R changes over your 4.5-10 K working range -- the
+calibration run also logs `r_heater_live` at every point.
 
     uv run python scripts/04_heater_resistance.py --ip 192.168.1.50
 """
@@ -21,8 +22,8 @@ import _common
 
 
 def _add(p):
-    p.add_argument("--volts", type=float, nargs="+", default=[1.0, 1.5, 2.0],
-                   help="drive voltages to probe (keep current < 30 mA)")
+    p.add_argument("--amps", type=float, nargs="+", default=[0.005, 0.010, 0.015],
+                   help="drive currents to probe (A)")
     p.add_argument("--settle", type=float, default=3.0, help="seconds to settle per point")
 
 
@@ -30,28 +31,26 @@ def main() -> None:
     args = _common.parse(__doc__, add_args=_add)
     cfg, ctc = _common.connect_eth(args)
     ch = cfg.channels
-    r_leads = cfg.r_leads_drive_ohm
     estimates: list[float] = []
     try:
         ctc.pid_mode(ch.heater, False)
+        ctc.set_units(ch.heater, cfg.heater_units)
+        ctc.set_high_limit(ch.heater, cfg.heater_hilmt)
         ctc.set_output(ch.heater, 0)
         ctc.outputs_on()
-        print(f"R_leads (drive loop) = {r_leads} ohm; nominal R_heater = {cfg.r_heater_ohm} ohm\n")
-        print(f"{'V_drive':>8} {'V_sense':>8} {'I (mA)':>8} {'P (mW)':>8} {'R_heater':>9}")
-        for v in args.volts:
-            ctc.set_output(ch.heater, v)
+        print(f"nominal R_heater (reference) = {cfg.r_heater_ohm} ohm\n")
+        print(f"{'I (mA)':>8} {'V_sense':>8} {'P (mW)':>8} {'R_heater':>9}")
+        for amps in args.amps:
+            ctc.set_output(ch.heater, amps)
             time.sleep(args.settle)
-            v_drive = ctc.read_channel(ch.heater)
-            v_sense = ctc.read_channel(ch.vsense)
-            if v_drive - v_sense <= 0:
-                print(f"{v_drive:8.4f} {v_sense:8.4f}   -- skipped (V_drive <= V_sense)")
+            current = ctc.read_channel(ch.heater)            # delivered current (A)
+            v_sense = ctc.read_channel(ch.vsense)            # true 4-wire voltage
+            if current <= 0:
+                print(f"{amps*1e3:8.2f}    -- no current delivered (heater connected?)")
                 continue
-            r_heater = r_leads * v_sense / (v_drive - v_sense)
-            current = v_sense / r_heater
-            power = v_sense**2 / r_heater
-            flag = "  <-- near 30 mA limit!" if current > 0.027 else ""
-            print(f"{v_drive:8.4f} {v_sense:8.4f} {current*1e3:8.2f} {power*1e3:8.2f} "
-                  f"{r_heater:9.2f}{flag}")
+            r_heater = v_sense / current
+            power = v_sense * current
+            print(f"{current*1e3:8.2f} {v_sense:8.4f} {power*1e3:8.2f} {r_heater:9.2f}")
             estimates.append(r_heater)
     finally:
         ctc.set_output(ch.heater, 0)
@@ -61,7 +60,8 @@ def main() -> None:
     if estimates:
         mean = sum(estimates) / len(estimates)
         print(f"\nMean R_heater = {mean:.2f} ohm  (nominal {cfg.r_heater_ohm}).")
-        print("If this differs, set r_heater_ohm in config.py to the measured value.")
+        print("Power in the calibration uses V_sense * I directly, so R is not "
+              "assumed -- this is just a health check.")
     print("Heater is OFF.")
 
 

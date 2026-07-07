@@ -13,6 +13,15 @@ This document records findings, decisions, and a phased implementation plan.
 > `BRINGUP.md` for the commissioning checklist. Remaining: bench bring-up on the
 > real CTC100, then Phase 3 (curve fit) and Phase 4 (cable measurements).
 >
+> **Heater drive (updated):** superseding the earlier AIO/BNC voltage-drive plan
+> (§1.3), the heater is now driven by a CTC100 **100 W output (`Out1`) as a current
+> source**, with the **AIO2** BNC kept as the 4-wire voltage sense. Power is
+> measured as `P = V_sense · I` and resistance as `R = V_sense / I` (logged as
+> `r_heater_live`) — no assumed resistance, lead dissipation excluded, and no
+> 90 mW AIO ceiling. This was chosen after finding R_heater is ~100 Ω at 300 K but
+> ~79 Ω cold (~20 % over 300→4 K); `r_heater_live` now reveals any drift across the
+> 4.5–10 K working range directly from the data.
+>
 > **40 K sensor architecture:** it lives on a *separate* USB-connected CTC100 owned
 > by the NEST FridgeControl GUI. USB/serial has no instrument-side arbitration, so
 > two processes sharing the port corrupt each other's reads. The current

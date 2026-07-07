@@ -46,10 +46,11 @@ class CalPoint(Base):
 
     setpoint_k = Column(Float)         # PID setpoint (None for the baseline point)
     t_isolated_k = Column(Float)       # sensor A -- isolated 4 K plate
-    t_40k_k = Column(Float)            # sensor B -- 40 K sub-plate
-    heater_power_w = Column(Float)     # V_sense^2 / R_heater
-    heater_v_sense = Column(Float)     # 4-wire voltage across the heater
-    heater_v_drive = Column(Float)     # commanded/read drive output voltage
+    t_40k_k = Column(Float)            # 40 K sub-plate (via RPC)
+    heater_power_w = Column(Float)     # V_sense * I  (true, leads excluded)
+    heater_v_sense = Column(Float)     # 4-wire voltage across the heater (AIO2)
+    heater_current = Column(Float)     # delivered current from the 100 W output (A)
+    r_heater_live = Column(Float)      # V_sense / I -- measured heater resistance
     stable = Column(Boolean)           # did it meet the stability criterion?
     stability_metric = Column(Float)   # rel. std over the settle window
     settle_time_s = Column(Float)      # time spent settling this point

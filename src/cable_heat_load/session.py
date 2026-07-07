@@ -33,7 +33,6 @@ def build_eth(cfg: CalibrationConfig) -> CTC100:
             heater=ch.heater,
             vsense=ch.vsense,
             r_heater=cfg.r_heater_ohm,
-            r_leads=cfg.r_leads_drive_ohm,
             tau=cfg.mock_tau,
         )
         return CTC100.offline(mock)

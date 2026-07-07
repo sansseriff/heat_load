@@ -8,8 +8,9 @@ window). Use it to confirm PID works and to tune P/I/D before the full sweep.
     uv run python scripts/06_pid_settle_test.py --ip 192.168.1.50 --setpoint 6.0 -p 0.08 -i 0.03 -d 0
 
 Watch for: overshoot (lower P/I), sluggishness (raise P), or oscillation (lower
-P, add a little D). A saturated heater (~90 mW) means the setpoint is above the
-AIO's reach -- lower it or move to the 100 W output.
+P, add a little D). Because the 100 W output is driven in current, the plant gain
+(dP/dI = 2*I*R) is small near base temperature, so the lowest setpoints settle
+more slowly -- that's expected; integral action still gets there.
 """
 
 from __future__ import annotations
@@ -45,8 +46,8 @@ def main() -> None:
     t0 = time.monotonic()
     settled_at = None
     try:
-        ctc.set_io_type(ch.heater, "Set out")
-        ctc.set_high_limit(ch.heater, cfg.heater_hilmt_v)
+        ctc.set_units(ch.heater, cfg.heater_units)
+        ctc.set_high_limit(ch.heater, cfg.heater_hilmt)
         ctc.configure_pid(ch.heater, ch.sensor_a, pid_p, pid_i, pid_d,
                           ramp_rate=cfg.pid_ramp, enable=True)
         ctc.set_setpoint(ch.heater, args.setpoint)
@@ -58,7 +59,8 @@ def main() -> None:
             elapsed = now - t0
             temp = ctc.read_channel(ch.sensor_a)
             v_sense = ctc.read_channel(ch.vsense)
-            power = v_sense**2 / cfg.r_heater_ohm
+            current = ctc.read_channel(ch.heater_current_chan or ch.heater)
+            power = v_sense * current
             window.append((now, temp))
             while window and now - window[0][0] > cfg.stability_window_s:
                 window.popleft()
