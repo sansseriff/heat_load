@@ -1,0 +1,25 @@
+The ultimate goal of this project is to create a measurement system for heat load of cabling inside a cryostat. The RFO report v3 explains the basic procedure. None of the code for this is available. We will write new code for doing very similar tests. Hopefully more advacned. 
+
+
+I would eventually like to use the lab_wizard framework for organizing these tests. 
+
+/Users/andrew/Documents/PROGRAM_LOCAL/lab_wizard_repo
+
+lab_wizard include a dependency library called lab_procedure which should be very handy for scueduling measurments and actions over a longer period of time. This is exactly what we need for doing the followig measuremnets. Note that lab_wizard and the sub procedure system assumes a pretty specific database schema and system. Look at that, and help me decide if we need all the database complexity it currently carries with it (cryostat, runs, individual measuremnets, etc. I think is is all pretty useful, just possibly a little verbose for the current task). When we're ready, the correct procedure will be to down. 
+
+lab-procedure and lab-wizard on pypi, and should be used in this project by doing "uv add ...". But I'd suggest reading the source code on this computer to see how they work
+
+1. Intitial heater calibration:
+    - Setup: 
+        - the cryostat is cooled down with no cable connecting the upper 40K plate to the 4K brass post isolated plate.  Note: there is currently a temperature sensor (A) on this isolated 4K stage, and there's also a sensor (B) on the 40K sub-stage that mounts directly onto the 40K stage with a high heat conductivity connection. The temp sense on the underside of the 40K stage (B) should always read very close to 40K for this reason. But we decided to add it anyways, since the cables we will attach link to this smaller block that screws to the underside of the 40K stage, not directly onto the 40K stage. The heater has four wires connected to it for a 4 wire measurement. The wires are phosphore bronze, so they have some non-negligible resistance. These 4 wires are routed out of the cryostat (like the thermometry cable) into two BNCs.
+        -  Each BNC has the inner conductor go to one side of the heater, and the outer conductor go to the other side. This way, one BNC can be for powering the resistor (I) and one can be a voltage sense (V) this way we can cancel out the resistance load of the cables with math (I think).  We should plan to use the BNC in/out ports on the back of the CTC 100 for this. See the image IMG_7085.jpeg. This has resistances of all 4 wires. The 9.4 and 9.2 wires are wired in series with the resistor for a total loop resistance of 118.6 ohms. The other loop is 9.1 and 8.6, creating a loop of resistance of 117.7. For no particular reason, let's use the lower resistance loop for powering the resitor (117.7).
+        - The thermometry cable also plugs into the CTC100 with a 9 pin dsub connector (I think its 9 pin, could be wrong). We will likely need to figure out how to initialize these temperature sensors on the CTC100 with correct calibation files. I have this image ref/SCR-20260706-jbwh.jpeg of the box the sensors arrived in. I think they use a standardized calibration file. Let me know if I need this file on a usb device for the CTC100 to use it. Right now, the dsub cable is setup such that I don't know which temp sense is 4K(on the heat isolated 4K stage) and which is on the 40K heat-conductive plate (should be near 4K). But with heater off, these should be very close to the temperatures of the stages their attached to. 
+    - Plan: The goal is to put various amounts of power through the resistor heat source, and observe what temperature that creates on the elevated 4K isolated plate. Given enough time, this could be done by simply setting the heat, and waiting for equilibrium. Since we're using a CTC100 though, there's the possibilty of using PID to get to steady state faster. If you think this is a reasonable goal, then plan and suggest a way of setting this up. This would involve a more complex usage and creation of procedures using the lab_wizard framework. Something like (A) set heater power (B) begin PID-based equilization. (C) once temperature is stable to within 1%, save heater value and temperature. 
+2. The futher steps will use the heater calibration curve to determine the heat load applied from 40K to 4K through various high density cables, by observing how much they raise the temperature of the small heat-isolated state. We will get to these steps at a later time. For now, we'll focus on setting up the heater calibration. 
+
+
+There's the CTC100 manual in the librature folder. We'll need to know how to talk to it to setup the Vout and Vin BNC ports, and the two temperature sensors on the dsub connector. Also, if you need reference for controlling a CTC100 via python, I think there's examples somwhere in those two folers in ref/. You'll have to do a deep/keyword search. Not sure where the usage is. Note that I will be using the ctc 100 via ethernet,  while the code in this folder accesses it via USB. 
+
+
+
+

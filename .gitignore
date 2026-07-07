@@ -1,0 +1,28 @@
+# --- Reference material & literature (large PDFs / third-party code) ---
+# Not tracked; keep the repo lightweight for pulls on the lab computer.
+/literature/
+/ref/
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+wheels/
+
+# --- uv / virtual environments ---
+.venv/
+
+# --- Measurement outputs (regenerated per run) ---
+*.db
+*.sqlite
+*.sqlite3
+*.parquet
+calibration_points.csv
+
+# --- OS / editor cruft ---
+.DS_Store
+*.swp
+.idea/
