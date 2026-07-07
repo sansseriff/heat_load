@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import re
 import socket
+import time
 from abc import ABC, abstractmethod
 from typing import Optional
 
@@ -48,6 +49,8 @@ class Transport(ABC):
     def query(self, cmd: str) -> str: ...
     @abstractmethod
     def label(self) -> str: ...
+    def drain(self) -> None:
+        """Discard any buffered/pending bytes so the next query stays aligned."""
 
 
 class EthernetTransport(Transport):
@@ -82,7 +85,7 @@ class EthernetTransport(Transport):
 
     def query(self, cmd: str) -> str:
         sock = self._require()
-        self._drain()
+        self.drain()
         sock.sendall((cmd.strip() + "\n").encode("ascii"))
         return self._read_line()
 
@@ -102,7 +105,7 @@ class EthernetTransport(Transport):
         self._buf = rest
         return line.decode("ascii", errors="replace").strip()
 
-    def _drain(self) -> None:
+    def drain(self) -> None:
         sock = self._require()
         self._buf = b""
         sock.setblocking(False)
@@ -171,6 +174,10 @@ class SerialTransport(Transport):
                 return line
         return ""
 
+    def drain(self) -> None:
+        if self._ser is not None:
+            self._ser.reset_input_buffer()
+
     def _require(self):
         if self._ser is None:
             raise ConnectionError("CTC100 (serial) is not connected; call connect() first")
@@ -228,7 +235,25 @@ class CTC100:
 
     def connect(self) -> "CTC100":
         self._t.connect()
+        if not isinstance(self._t, MockTransport):
+            self._setup_comms()
         return self
+
+    def _setup_comms(self) -> None:
+        """Put the CTC100 in Verbose=Low so it replies ONLY to queries.
+
+        In Medium/High the CTC100 also replies to set-commands; since our
+        writes are fire-and-forget, those stray replies would pile up and
+        misalign later reads (a set-echo gets returned as a query's answer).
+        Low mode eliminates that. We drain once after switching to clear the
+        reply this very command generates in the pre-existing verbose mode.
+        """
+        try:
+            self._t.write("System.COM.Verbose Low")
+            time.sleep(0.15)
+            self._t.drain()
+        except Exception:
+            pass
 
     def close(self) -> None:
         self._t.close()
