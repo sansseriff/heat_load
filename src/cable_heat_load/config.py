@@ -56,7 +56,7 @@ class Remote40K:
 @dataclass
 class CalibrationConfig:
     # --- Ethernet CTC connection --- #
-    ip: str = "192.168.1.100"          # set the CTC100's IP on its Setup screen
+    ip: str = "192.168.2.109"          # set the CTC100's IP on its Setup screen
     port: int = 23                     # raw TCP / telnet port (fixed on CTC100)
     timeout: float = 3.0
     offline: bool = False              # True -> use in-process mocks (no hw/broker)

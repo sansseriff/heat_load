@@ -51,8 +51,12 @@ def main() -> None:
         ctc.pid_mode(ch.heater, False)
         ctc.set_units(ch.heater, cfg.heater_units)
         ctc.set_high_limit(ch.heater, cfg.heater_hilmt)
-        ctc.set_output(ch.heater, args.amps)
+        # Enable the output at zero first, THEN set the drive current. The CTC100
+        # brings the output up at zero on `outputEnable on`, so a value set before
+        # enabling gets clobbered back to 0 (this is what left Out1 stuck at zero).
+        ctc.set_output(ch.heater, 0)
         ctc.outputs_on()
+        ctc.set_output(ch.heater, args.amps)
         print(f"Heater ON at {args.amps*1e3:.1f} mA. Expect T_A to rise.\n")
         _stream(ctc, cfg, "heat", args.seconds, args.interval, t0)
 
