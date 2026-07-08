@@ -19,6 +19,18 @@ from lab_procedure import Observation, Status, Step
 from cable_heat_load.config import CalibrationConfig
 
 
+def read_vsense(ctc, cfg: CalibrationConfig) -> float:
+    """True 4-wire heater voltage: read(H+) - read(H-).
+
+    Both AIO inputs are ground-referenced, so the shared-ground common-mode
+    offset (the grounded return-lead drop) cancels in the difference, leaving
+    the voltage across the heater element only. The two reads are sequential, so
+    the current must be steady when sampled (it is at a settled point).
+    """
+    ch = cfg.channels
+    return ctc.read_channel(ch.vsense) - ctc.read_channel(ch.vsense_lo)
+
+
 def read_snapshot(instruments, cfg: CalibrationConfig) -> dict:
     """Read all sources and compute true heater power from I and the 4-wire V.
 
@@ -30,7 +42,7 @@ def read_snapshot(instruments, cfg: CalibrationConfig) -> dict:
     """
     ctc = instruments.eth
     ch = cfg.channels
-    v_sense = ctc.read_channel(ch.vsense)
+    v_sense = read_vsense(ctc, cfg)
     current = ctc.read_channel(ch.heater_current_chan or ch.heater)
     power = v_sense * current
     r_live = v_sense / current if current else float("nan")

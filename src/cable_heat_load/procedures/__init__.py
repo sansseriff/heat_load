@@ -6,6 +6,7 @@ from cable_heat_load.procedures.steps import (
     SetSetpoint,
     WaitForStability,
     read_snapshot,
+    read_vsense,
 )
 
 __all__ = [
@@ -16,4 +17,5 @@ __all__ = [
     "SetSetpoint",
     "WaitForStability",
     "read_snapshot",
+    "read_vsense",
 ]

@@ -21,7 +21,8 @@ Scripts live in `src/scripts/` and take `--ip <address>` (real CTC100) or
 
 **Two temperature sources** (this is important):
 - The **Ethernet CTC100** (the one we own) has the **isolated 4 K plate** diode
-  (`channels.sensor_a`) plus the **heater** (100 W output) and 4-wire sense (AIO2).
+  (`channels.sensor_a`) plus the **heater** (100 W output) and its differential
+  4-wire sense (AIO1 + AIO2).
 - The **40 K sub-plate** diode lives on a *different, USB-connected* CTC100 owned
   by the **NEST FridgeControl GUI**. We do **not** open that USB port (serial has
   no arbitration and two openers corrupt each other's reads). Instead we read it
@@ -31,10 +32,13 @@ Scripts live in `src/scripts/` and take `--ip <address>` (real CTC100) or
 **Wiring recap** (from `goal.md` / `ref/IMG_7085.jpeg`):
 - Heater is 4-wire → the **Ethernet** CTC. **Drive** = the two current leads to a
   **100 W screw-terminal output** (`Out1`), driven as a current source. **Sense** =
-  loop A (9.4 + 9.2 Ω leads) → the **AIO2** BNC input (4-wire heater voltage).
-  Power is `P = V_sense · I` and resistance `R = V_sense / I` — the current comes
-  from the 100 W output (a real current source), the voltage from AIO2, so no
-  resistance is assumed and the lead dissipation is excluded.
+  the two sense leads (loop A) tapped **at the heater terminals** → two AIO inputs:
+  H+ → **AIO2**, H− → **AIO1**. Heater voltage is the *difference*
+  `V_sense = AIO2 − AIO1` (a single-ended AIO can't do this alone — the shared
+  ground puts H− at the return-lead drop above ground, so you subtract two
+  ground-referenced reads to cancel it). Power is `P = V_sense · I` and resistance
+  `R = V_sense / I` — current from the 100 W output, voltage differential from the
+  two AIOs, so no resistance is assumed and lead dissipation is excluded.
 - Isolated-plate diode = **DT-670B-CU** on the Ethernet CTC's 9-pin D-sub.
 
 **Prerequisite for the 40 K reading:** the **FridgeControl GUI**
@@ -54,8 +58,8 @@ server) must be **running**, with a **RabbitMQ broker on localhost**. Verify wit
    connect, press **System.IP.Close** on the CTC100, or power-cycle.
 
 **Match the software to your hardware:** open `cable_heat_load/config.py` and set
-`Channels.sensor_a/heater/vsense` to your Ethernet CTC's channel names (e.g.
-`T4k`, `Out1`, `AIO2`) and `Remote40K.command` to whatever the FridgeControl
+`Channels.sensor_a/heater/vsense/vsense_lo` to your Ethernet CTC's channel names
+(e.g. `T4k`, `Out1`, `AIO2`, `AIO1`) and `Remote40K.command` to the FridgeControl
 server calls your 40 K sensor. You'll confirm these in Step 2.
 
 ---
@@ -91,8 +95,8 @@ the troubleshooting table.
 uv run python scripts/03_configure_channels.py --ip 192.168.1.50
 ```
 Sets the isolated-plate diode to `Diode`, the heater (`Out1`, a 100 W output) to
-units **Amps** with a safety `HiLmt`, and the sense channel (`AIO2`) to `Input`.
-Readback should show the plate sane and heater/sense ≈ 0. Leaves the heater
+units **Amps** with a safety `HiLmt`, and both sense channels (`AIO2`, `AIO1`) to
+`Input`. Readback should show the plate sane and heater/sense ≈ 0. Leaves the heater
 **off**. (The 40 K sensor is owned by FridgeControl — we don't configure it.)
 
 ## Step 4 — Heater resistance & drive check  (`04_heater_resistance.py`)
@@ -100,12 +104,16 @@ Readback should show the plate sane and heater/sense ≈ 0. Leaves the heater
 ```bash
 uv run python scripts/04_heater_resistance.py --ip 192.168.1.50
 ```
-Drives `Out1` at a few small currents and reads the 4-wire voltage, so
-`R_heater = V_sense / I` (exact — current source + 4-wire voltage). **Pass:**
-`R_heater ≈ 79 Ω` (its cold value; ~100 Ω at 300 K), current delivered on each
-step. The calibration computes power as `V_sense · I` directly, so **R is not
-assumed** — this is a health check, and it logs `r_heater_live` at every
-calibration point so you can *see* whether R drifts across 4.5–10 K.
+Drives `Out1` at a few small currents and reads the **differential** 4-wire
+voltage (`AIO2 − AIO1`), so `R_heater = V_sense / I` (exact — current source +
+true 4-wire voltage). **Pass:** `R_heater` at the heater-only value (the
+ground-referenced lead drop is now cancelled — if you'd read a single AIO you'd
+see the inflated heater+lead loop instead), current delivered on each step. If
+`V_sense` is negative, swap `vsense`/`vsense_lo` in `config.py`. The calibration
+computes power as `V_sense · I` directly, so **R is not assumed**, and it logs
+`r_heater_live` at every point so you can *see* whether R drifts across 4.5–10 K.
+Note: at base temp even a few mW warms the weakly-linked plate, so R rises across
+current steps (self-heating) — measure at a fixed PID setpoint to separate that.
 
 > Optional cross-check: on the CTC100, **Monitors → Show** enables the output
 > card's measured heater voltage/current/resistance channels. If you'd rather
@@ -185,6 +193,8 @@ what phase 2 uses to infer cable heat loads.
 | Plate reads `nan` or 0 | Wrong `channels.sensor_a` in `config.py`; diode curve not selected on the CTC100 (Step 0.2). |
 | 40 K reads `NaN` | FridgeControl GUI or RabbitMQ broker not running; or `remote_40k.command` doesn't map to your sensor → `check_40k_rpc.py`, try another `--command`, or add a case in the server's `parse_queue_message`. |
 | 40 K reads wrong value | `T40K` maps to a different thermometry slot than your sensor → pick the right command or re-slot the sensor on the FridgeControl side. |
-| `r_heater_live` NaN / wild | No current delivered (heater open?) or AIO2 not sensing across the heater; check the screw-terminal and AIO2 wiring. |
+| `r_heater_live` NaN / wild | No current delivered (heater open?) or a sense lead loose; check `Out1` screw terminals and the AIO2 (H+) / AIO1 (H−) taps. |
+| `V_sense` negative | H+/H− sense leads swapped → swap `vsense`/`vsense_lo` in `config.py`. |
+| `R` looks like heater + leads (too high) | Only one AIO tapped, or `vsense_lo` not set → confirm both H+ and H− go to AIO inners tapped at the heater terminals. |
 | "heater disconnected" / can't tune | 100 W output measures heater R < 1 Ω or > 10 kΩ — check the heater connection at `Out1`. |
 | Never settles / always times out | Time constant longer than `stability_window_s`; raise `settle_timeout_s`, widen the window, or loosen `stability_tol`. Lowest setpoints settle slowly (current-drive gain → 0 near base). |

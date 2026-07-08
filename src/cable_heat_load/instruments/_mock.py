@@ -44,7 +44,10 @@ class MockCTC100Backend:
     # Role -> CTC100 channel name (must match the config used by the caller).
     sensor_a: str = "T4k"          # isolated 4 K plate
     heater: str = "Out1"           # 100 W output, driven in Amps
-    vsense: str = "AIO2"           # 4-wire voltage sense (volts)
+    vsense: str = "AIO2"           # heater sense HIGH side (H+), vs ground
+    vsense_lo: str = "AIO1"        # heater sense LOW side (H-), vs ground
+    r_return: float = 0.0          # grounded return-lead resistance (shared-ground
+                                   # artifact); >0 makes single-ended over-read
 
     # Physical parameters, tuned to the previous team's real standoff
     # calibration (StandoffCalibrations/20250620.csv): base 4.485 K, ~46 mW->10 K.
@@ -153,6 +156,10 @@ class MockCTC100Backend:
             return self._t_a + self._rng.gauss(0.0, self.noise_k)
         if name == self.heater:
             return self._current
+        # H+ vs ground = drop across heater + grounded return lead;
+        # H- vs ground = drop across the return lead. Difference = I * R_heater.
         if name == self.vsense:
-            return self._current * self._r_at(self._t_a)  # true 4-wire heater voltage
+            return self._current * (self._r_at(self._t_a) + self.r_return)
+        if name == self.vsense_lo:
+            return self._current * self.r_return
         return 0.0

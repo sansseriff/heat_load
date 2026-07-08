@@ -24,7 +24,13 @@ class Channels:
 
     sensor_a: str = "T4k"    # isolated 4 K plate diode (reads ~4 K, heater off)
     heater: str = "Out1"     # 100 W screw-terminal output, driven in Amps
-    vsense: str = "AIO2"     # 4-wire heater voltage sense (Input)
+    # 4-wire heater voltage, measured DIFFERENTIALLY across the heater with two
+    # ground-referenced AIO inputs: V_sense = read(vsense) - read(vsense_lo).
+    # Tap both right at the heater terminals; the shared-ground common-mode
+    # offset (the grounded return-lead drop) cancels in the subtraction. If
+    # V_sense comes out negative, swap these two channel names.
+    vsense: str = "AIO2"     # heater HIGH terminal (H+)
+    vsense_lo: str = "AIO1"  # heater LOW terminal (H-)
     # Optional: if you instead drive the heater in Watts and enable the output
     # card's current Monitor channel (Monitors -> Show), put its name here to
     # read the true current from it. Leave None to read current from `heater`

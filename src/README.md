@@ -16,10 +16,11 @@ uv sync
 - **Phase 0–2 (done):** CTC100 driver (Ethernet + USB transports) with an offline
   mock, bring-up scripts, and the full heater-calibration procedure with
   SQLite/CSV saving.
-- **Heater drive:** a CTC100 **100 W output** (`Out1`) as a current source + the
-  **AIO2** 4-wire voltage sense, so power is `P = V_sense·I` and resistance
-  `R = V_sense/I` are measured directly (no assumed R; `r_heater_live` is logged
-  every point).
+- **Heater drive:** a CTC100 **100 W output** (`Out1`) as a current source + a
+  **differential** 4-wire voltage sense across the heater (`AIO2 − AIO1`, to cancel
+  the shared-ground return-lead drop), so power `P = V_sense·I` and resistance
+  `R = V_sense/I` are measured directly (no assumed R; `r_heater_live` logged every
+  point).
 - **Two temperature sources:** the isolated 4 K plate + heater are on the
   **Ethernet CTC** we own; the **40 K sub-plate** lives on another (USB) CTC owned
   by the NEST FridgeControl GUI and is read over **RabbitMQ RPC** (command `T40K`)

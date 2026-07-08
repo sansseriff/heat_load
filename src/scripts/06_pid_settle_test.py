@@ -20,6 +20,7 @@ import time
 from collections import deque
 
 import _common
+from cable_heat_load.procedures import read_vsense
 
 
 def _add(p):
@@ -58,7 +59,7 @@ def main() -> None:
             now = time.monotonic()
             elapsed = now - t0
             temp = ctc.read_channel(ch.sensor_a)
-            v_sense = ctc.read_channel(ch.vsense)
+            v_sense = read_vsense(ctc, cfg)
             current = ctc.read_channel(ch.heater_current_chan or ch.heater)
             power = v_sense * current
             window.append((now, temp))

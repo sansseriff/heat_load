@@ -19,6 +19,7 @@ from __future__ import annotations
 import time
 
 import _common
+from cable_heat_load.procedures import read_vsense
 
 
 def _add(p):
@@ -44,7 +45,8 @@ def main() -> None:
             ctc.set_output(ch.heater, amps)
             time.sleep(args.settle)
             current = ctc.read_channel(ch.heater)            # delivered current (A)
-            v_sense = ctc.read_channel(ch.vsense)            # true 4-wire voltage
+            v_sense = read_vsense(ctc, cfg)            # true 4-wire voltage
+            print("this is v_sense:", v_sense)
             if current <= 0:
                 print(f"{amps*1e3:8.2f}    -- no current delivered (heater connected?)")
                 continue

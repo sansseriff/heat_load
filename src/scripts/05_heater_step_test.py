@@ -16,6 +16,7 @@ from __future__ import annotations
 import time
 
 import _common
+from cable_heat_load.procedures import read_vsense
 
 
 def _add(p):
@@ -29,7 +30,7 @@ def _stream(ctc, cfg, label, seconds, interval, t0):
     ch = cfg.channels
     end = time.monotonic() + seconds
     while time.monotonic() < end:
-        v_sense = ctc.read_channel(ch.vsense)
+        v_sense = read_vsense(ctc, cfg)
         current = ctc.read_channel(ch.heater_current_chan or ch.heater)
         power = v_sense * current
         r = v_sense / current if current else float("nan")
