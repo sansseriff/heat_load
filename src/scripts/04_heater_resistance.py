@@ -42,6 +42,9 @@ def main() -> None:
         print(f"nominal R_heater (reference) = {cfg.r_heater_ohm} ohm\n")
         print(f"{'I (mA)':>8} {'V_sense':>8} {'P (mW)':>8} {'R_heater':>9}")
         for amps in args.amps:
+            if amps > cfg.heater_hilmt:
+                print(f"  skipping {amps*1e3:.1f} mA (> {cfg.heater_hilmt*1e3:.0f} mA safety cap)")
+                continue
             ctc.set_output(ch.heater, amps)
             time.sleep(args.settle)
             current = ctc.read_channel(ch.heater)            # delivered current (A)

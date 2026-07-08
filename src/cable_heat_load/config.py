@@ -67,7 +67,12 @@ class CalibrationConfig:
 
     # --- heater electrical --- #
     heater_units: str = "A"            # drive the 100 W output as a current source
-    heater_hilmt: float = 0.05         # output high-limit safety clamp (in heater_units, A)
+    # Hard current cap, pushed to the CTC100's HiLmt register on every drive path
+    # (manual and PID), so the output physically cannot exceed it. 30 mA at the
+    # ~115 Ohm cold heater is ~0.1 W -- about 5% of the PT420's 2.0 W @ 4.2 K 4K
+    # stage, i.e. deliberately conservative. Do not raise without re-checking that
+    # headroom.
+    heater_hilmt: float = 0.03         # output high-limit safety clamp (A) = 30 mA
     # R_heater is now *measured* live (V_sense / I); these are only nominal
     # references (DMM: ~100 Ω at 300 K, ~79 Ω cold) used by the mock / sanity checks.
     r_heater_ohm: float = 90.0

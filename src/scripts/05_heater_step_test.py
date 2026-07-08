@@ -20,7 +20,7 @@ from cable_heat_load.procedures import read_vsense
 
 
 def _add(p):
-    p.add_argument("--amps", type=float, default=0.02, help="drive current to apply (A)")
+    p.add_argument("--amps", type=float, default=0.015, help="drive current to apply (A)")
     p.add_argument("--seconds", type=float, default=120.0, help="heat-on duration")
     p.add_argument("--cooldown", type=float, default=40.0, help="heat-off observation")
     p.add_argument("--interval", type=float, default=3.0, help="seconds between reads")
@@ -46,6 +46,10 @@ def main() -> None:
     args = _common.parse(__doc__, add_args=_add)
     cfg, ctc = _common.connect_eth(args)
     ch = cfg.channels
+    if args.amps > cfg.heater_hilmt:
+        print(f"Requested {args.amps*1e3:.1f} mA exceeds the {cfg.heater_hilmt*1e3:.0f} mA "
+              f"safety cap; clamping to {cfg.heater_hilmt*1e3:.0f} mA.")
+        args.amps = cfg.heater_hilmt
     t0 = time.monotonic()
     try:
         ctc.pid_mode(ch.heater, False)
