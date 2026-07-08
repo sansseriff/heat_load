@@ -41,6 +41,7 @@ def _stream(ctc, cfg, label, seconds, interval, t0):
         time.sleep(interval)
 
 
+
 def main() -> None:
     args = _common.parse(__doc__, add_args=_add)
     cfg, ctc = _common.connect_eth(args)
