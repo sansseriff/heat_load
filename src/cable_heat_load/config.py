@@ -82,8 +82,8 @@ class CalibrationConfig:
     sensor_type: str = "Diode"         # DT-670; select the standard diode curve on the CTC100
 
     # --- PID (drive is Amps/K; TUNE with scripts/06_pid_settle_test.py) --- #
-    pid_p: float = 0.003
-    pid_i: float = 0.001
+    pid_p: float = 0.200
+    pid_i: float = 0.080
     pid_d: float = 0.0
     pid_ramp: float = 0.0              # setpoint ramp rate (K/s); 0 = step
 
