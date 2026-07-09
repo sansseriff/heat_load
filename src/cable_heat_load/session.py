@@ -33,6 +33,10 @@ def build_eth(cfg: CalibrationConfig) -> CTC100:
             heater=ch.heater,
             vsense=ch.vsense,
             vsense_lo=ch.vsense_lo,
+            i_monitor=ch.i_monitor or "",
+            v_monitor=ch.v_monitor or "",
+            r_monitor=ch.r_monitor or "",
+            r_leads_2wire=cfg.r_leads_drive_ohm,
             r_heater=cfg.r_heater_ohm,
             tau=cfg.mock_tau,
         )

@@ -26,6 +26,7 @@ from cable_heat_load.data.schema import Base, CalPoint, Run
 _CSV_FIELDS = [
     "timestamp", "setpoint_k", "t_isolated_k", "t_40k_k",
     "heater_power_w", "heater_v_sense", "heater_current", "r_heater_live",
+    "heater_i_monitor", "heater_v_monitor", "heater_r_monitor",
     "stable", "stability_metric", "settle_time_s",
 ]
 
@@ -84,6 +85,9 @@ class CalibrationSaver:
                 heater_v_sense=d.get("heater_v_sense"),
                 heater_current=d.get("heater_current"),
                 r_heater_live=d.get("r_heater_live"),
+                heater_i_monitor=d.get("heater_i_monitor"),
+                heater_v_monitor=d.get("heater_v_monitor"),
+                heater_r_monitor=d.get("heater_r_monitor"),
                 stable=d.get("stable"),
                 stability_metric=d.get("stability_metric"),
                 settle_time_s=d.get("settle_time_s"),

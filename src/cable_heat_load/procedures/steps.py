@@ -46,6 +46,13 @@ def read_snapshot(instruments, cfg: CalibrationConfig) -> dict:
     current = ctc.read_channel(ch.heater_current_chan or ch.heater)
     power = v_sense * current
     r_live = v_sense / current if current else float("nan")
+    # Output-card monitor channels (if enabled/named). i is the measured current;
+    # v/r are 2-wire (include leads) -- diagnostics only, not the 4-wire values.
+    def _mon(name: str | None) -> float:
+        return ctc.read_channel(name) if name else float("nan")
+    i_monitor = _mon(ch.i_monitor)
+    v_monitor = _mon(ch.v_monitor)
+    r_monitor = _mon(ch.r_monitor)
     t_40k = float("nan")
     if instruments.t40k is not None:
         try:
@@ -59,6 +66,9 @@ def read_snapshot(instruments, cfg: CalibrationConfig) -> dict:
         "heater_current": current,
         "heater_power_w": power,
         "r_heater_live": r_live,
+        "heater_i_monitor": i_monitor,
+        "heater_v_monitor": v_monitor,
+        "heater_r_monitor": r_monitor,
     }
 
 
@@ -72,6 +82,7 @@ class ConfigureInstrument(Step):
     def run(self) -> Status:
         ctc = self.context.instruments.eth
         cfg, ch = self.cfg, self.cfg.channels
+        ctc.set_display_figures(cfg.display_figures)   # more precision in query replies
         ctc.set_sensor(ch.sensor_a, cfg.sensor_type)
         # 100 W outputs (Out1/Out2) are dedicated outputs -- no IOtype to set;
         # just choose units (Amps) and a safety high-limit.

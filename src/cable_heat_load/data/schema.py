@@ -51,6 +51,9 @@ class CalPoint(Base):
     heater_v_sense = Column(Float)     # 4-wire voltage across the heater (AIO2)
     heater_current = Column(Float)     # delivered current from the 100 W output (A)
     r_heater_live = Column(Float)      # V_sense / I -- measured heater resistance
+    heater_i_monitor = Column(Float)   # Out1 I monitor -- measured current (A)
+    heater_v_monitor = Column(Float)   # Out1 V monitor -- 2-wire voltage, incl. leads (V)
+    heater_r_monitor = Column(Float)   # Out1 R monitor -- 2-wire resistance, incl. leads (Ω)
     stable = Column(Boolean)           # did it meet the stability criterion?
     stability_metric = Column(Float)   # rel. std over the settle window
     settle_time_s = Column(Float)      # time spent settling this point

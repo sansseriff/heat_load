@@ -303,6 +303,10 @@ class CTC100:
     def set_high_limit(self, name: str, value: float) -> None:
         self.write(f"{name}.HiLmt {value}")
 
+    def set_display_figures(self, n: int) -> None:
+        """Decimal places returned in remote query replies (0-6, global)."""
+        self.write(f"System.Display.Figures {int(n)}")
+
     # PID
     def set_pid_input(self, output: str, input_channel: str) -> None:
         self.write(f"{output}.PID.Input {input_channel}")

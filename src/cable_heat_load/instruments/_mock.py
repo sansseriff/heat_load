@@ -48,6 +48,11 @@ class MockCTC100Backend:
     vsense_lo: str = "AIO1"        # heater sense LOW side (H-), vs ground
     r_return: float = 0.0          # grounded return-lead resistance (shared-ground
                                    # artifact); >0 makes single-ended over-read
+    i_monitor: str = "Out1I"       # output-card measured-current monitor
+    v_monitor: str = "Out1V"       # output-card 2-wire voltage monitor (incl. leads)
+    r_monitor: str = "Out1R"       # output-card 2-wire resistance monitor (incl. leads)
+    r_leads_2wire: float = 0.0     # total drive-lead R the 2-wire monitor adds on top
+                                   # of R_heater (the 4-wire sense excludes it)
 
     # Physical parameters, tuned to the previous team's real standoff
     # calibration (StandoffCalibrations/20250620.csv): base 4.485 K, ~46 mW->10 K.
@@ -162,4 +167,12 @@ class MockCTC100Backend:
             return self._current * (self._r_at(self._t_a) + self.r_return)
         if name == self.vsense_lo:
             return self._current * self.r_return
+        # Output-card monitors: measured current, and 2-wire V/R that include
+        # the drive leads (so they read higher than the 4-wire heater V/R).
+        if name == self.i_monitor:
+            return self._current
+        if name == self.v_monitor:
+            return self._current * (self._r_at(self._t_a) + self.r_leads_2wire)
+        if name == self.r_monitor:
+            return self._r_at(self._t_a) + self.r_leads_2wire
         return 0.0

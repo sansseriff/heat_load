@@ -17,6 +17,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+import numpy as np
+
 
 @dataclass
 class Channels:
@@ -36,6 +38,19 @@ class Channels:
     # read the true current from it. Leave None to read current from `heater`
     # directly (requires heater_units = 'A').
     heater_current_chan: str | None = None
+    # Output-card MONITOR channels, exposed on the CTC100 via
+    # Setup -> System tab -> Display column -> Monitors = Show. Names are the
+    # front-panel labels ("Out 1 I/V/R") with spaces omitted, which is how the
+    # CTC100 accepts channel names in queries (manual p.30/p.40). Set any to None
+    # to skip it.
+    #   i_monitor -- MEASURED heater current (16-bit ADC across the sense
+    #     resistor); higher resolution than the Out1 setpoint readback.
+    #   v_monitor / r_monitor -- the card's 2-WIRE voltage/resistance, which
+    #     INCLUDE the drive leads. These are NOT the 4-wire heater V/R (that is
+    #     vsense on AIO2); logged for diagnostics and lead-drop checks only.
+    i_monitor: str | None = "Out1I"
+    v_monitor: str | None = "Out1V"
+    r_monitor: str | None = "Out1R"
 
 
 @dataclass
@@ -65,6 +80,12 @@ class CalibrationConfig:
     channels: Channels = field(default_factory=Channels)
     remote_40k: Remote40K = field(default_factory=Remote40K)
 
+    # Decimal places the CTC100 returns in remote query replies
+    # (System.Display.Figures, 0-6). The default of 3 quantizes the current
+    # readback to ~1 mA; 6 preserves the current monitor's ~3 uA resolution.
+    # Does not affect PID or the instrument's own logs (manual p.70).
+    display_figures: int = 6
+
     # --- heater electrical --- #
     heater_units: str = "A"            # drive the 100 W output as a current source
     # Hard current cap, pushed to the CTC100's HiLmt register on every drive path
@@ -82,22 +103,21 @@ class CalibrationConfig:
     sensor_type: str = "Diode"         # DT-670; select the standard diode curve on the CTC100
 
     # --- PID (drive is Amps/K; TUNE with scripts/06_pid_settle_test.py) --- #
-    pid_p: float = 0.200
-    pid_i: float = 0.080
+    pid_p: float = 0.020
+    pid_i: float = 0.006
     pid_d: float = 0.0
     pid_ramp: float = 0.0              # setpoint ramp rate (K/s); 0 = step
 
     # --- temperature setpoints (K) --- #
     # Spacing reproduces the previous team's 20250620.csv (fine near base,
     # coarsening upward). The heater-off baseline is recorded separately.
-    setpoints: tuple[float, ...] = (
-        4.6, 4.7, 4.8, 4.9, 5.0, 5.2, 5.4, 5.6, 5.8, 6.0,
-        6.5, 7.0, 7.5, 8.0, 9.0, 10.0,
+    setpoints: list[float] = field(
+        default_factory=lambda: np.arange(4.6, 10.01, 0.1).tolist()
     )
 
     # --- stability detection --- #
-    stability_tol: float = 0.01        # rel. std over the window must be < 1 %
-    stability_window_s: float = 90.0   # rolling window that must stay flat
+    stability_tol: float = 0.006        # rel. std over the window must be < 0.5 %
+    stability_window_s: float = 20.0   # rolling window that must stay flat
     poll_interval_s: float = 2.0       # how often to sample while settling
     settle_timeout_s: float = 1200.0   # give up on a setpoint after this long
 
